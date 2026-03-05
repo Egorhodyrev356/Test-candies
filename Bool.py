@@ -7,11 +7,9 @@
 
 
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QMainWindow
+from PyQt6.QtWidgets import QMainWindow, QMessageBox
 from sqlalchemy import func
-from database import session
-
-
+from database import session, Candies
 
 
 class Ui_MainWindow(object):
@@ -124,13 +122,16 @@ class Ui_MainWindow(object):
         self.pushButton_2.setText(_translate("MainWindow", "Лучший результат"))
         self.label_7.setText(_translate("MainWindow", "Название  конфеты"))
 
-class Window(QtWidgets, Ui_MainWindow, QMainWindow):
+
+class Window(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(Window, self).__init__()
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
+        self.setupUi(self)
         self.pushButton.clicked.connect(self.add)
+        self.pushButton_2.clicked.connect(self.best_result)
+        self.horizontalSlider.setRange(1, 10)
 
+    #
     def add(self):
         name = self.lineEdit_7.text()
         appearance = self.lineEdit.text()
@@ -139,15 +140,35 @@ class Window(QtWidgets, Ui_MainWindow, QMainWindow):
         taste_fill = self.lineEdit_4.text()
         taste_glaze = self.lineEdit_5.text()
         crispy = self.lineEdit_6.text()
-        # final_mark = self.horizontalSlider.value()
+        final_mark = str(self.horizontalSlider.value())
+        answers = [ appearance, fragility, density, taste_fill, taste_glaze, crispy, final_mark]
+        for answer in answers:
+            if not answer.isnumeric():
+                QMessageBox.critical(self, 'Предупреждение', 'Оценка должна быть числом!')
+                return
+        for answer in answers:
+            if int(answer) not in range(1, 11):
+                QMessageBox.critical(self, 'Предупреждение', 'Оценка от 1 - 10!')
+                return
 
 
-    # def Best(self):
-    #     s.query(func.max(table_name.column_name)).all()
+        if name and appearance and fragility and density and taste_fill and taste_glaze and crispy and final_mark:
+            candie = Candies(name=name, appearance=appearance, fragility=fragility, density=density,
+                             taste_fill=taste_fill, taste_glaze=taste_glaze, crispy=crispy, final_mark=final_mark)
+            session.merge(candie)
+            session.commit()
+            QMessageBox.information(self, 'Записано', 'Отзыв успешно сохранён!')
+        else:
+            QMessageBox.information(self, 'Предупреждение', 'Заполните все поля ввода!')
 
+    def best_result(self):
+        candies = session.query(Candies).all()
+        # best_result = max(candies, key=lambda c: c.final_mark)
+        # print(best_result)
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     window.show()
